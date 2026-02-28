@@ -4,19 +4,25 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <math.h>
 
 #include <structs.h>
 
 SDL_Window *window = NULL;
 SDL_Renderer *renderer = NULL;
+SDL_Point windowSize = {640, 480};
 
 SDL_MouseButtonFlags mouseState;
 SDL_FPoint mousePos;
 ButtonMap mouseButtons[3];
 
-SDL_FPoint lastMousePos;
+SDL_Point lastMousePos;
+
+float zoom = 1;
+SDL_FPoint cameraPos = {0, 0};
 
 Image testImage = {NULL, NULL, NULL, 256, 256};
+bool updateImage = true;
 
 bool between(float input, float min, float max){return(input >= min && input <= max);}
 
@@ -34,12 +40,12 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]){
 	//	(void)argv[i];
 	//}
 
-	if(!SDL_CreateWindowAndRenderer("SDLPaint", 640, 480, SDL_WINDOW_RESIZABLE, &window, &renderer)){
+	if(!SDL_CreateWindowAndRenderer("SDLPaint", windowSize.x, windowSize.y, SDL_WINDOW_RESIZABLE, &window, &renderer)){
 		SDL_Log("Couldn't create window/renderer: %s", SDL_GetError());
 		return SDL_APP_FAILURE;
 	}
 
-	SDL_SetRenderVSync(renderer, 1);
+	//SDL_SetRenderVSync(renderer, 1);
 
 	mouseButtons[0].code = SDL_BUTTON_LMASK; mouseButtons[1].code = SDL_BUTTON_MMASK; mouseButtons[2].code = SDL_BUTTON_RMASK;
 
@@ -59,13 +65,32 @@ SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event){
 	if(event->type == SDL_EVENT_QUIT){
 		return SDL_APP_SUCCESS;
 	}
+
+	if(event->type == SDL_EVENT_MOUSE_WHEEL){
+		
+		if((SDL_GetWindowFlags(window) & SDL_WINDOW_INPUT_FOCUS)){
+			float zoomSpeed = max(0.1, sqrt(zoom) / 10);
+			float zoomMin = 0.1;
+			float zoomMax = 10;
+			
+			float zoomChange = zoomSpeed * (1 - 2 * (event->wheel.y < 0)) * (event->wheel.y != 0);
+			zoom = min(max(zoom + zoomChange, zoomMin), zoomMax);
+
+			//cameraPos = (SDL_FPoint){(mousePos.x - windowSize.x/2), (mousePos.y - windowSize.y/2)};
+
+			if(zoom < 1)
+				SDL_SetTextureScaleMode(testImage.texture, SDL_SCALEMODE_LINEAR);
+			else
+				SDL_SetTextureScaleMode(testImage.texture, SDL_SCALEMODE_NEAREST);
+		}
+	}
 	
 	return SDL_APP_CONTINUE;
 }
 
 SDL_AppResult SDL_AppIterate(void *appstate){
 	(void)appstate;
-	//SDL_GetWindowSize(window, &windowSize.x, &windowSize.y);
+	SDL_GetWindowSize(window, &windowSize.x, &windowSize.y);
 
 	mouseState = SDL_GetMouseState(&mousePos.x, &mousePos.y);
 	for(int i=0; i<3; i++){
@@ -83,17 +108,32 @@ SDL_AppResult SDL_AppIterate(void *appstate){
 	SDL_SetRenderDrawColor(renderer, 96, 96, 96, SDL_ALPHA_OPAQUE);
 	SDL_RenderClear(renderer);
 
-	if(mouseButtons[0].down && between(mousePos.x, 0, testImage.width) && between(mousePos.y, 0, testImage.height)){
+	//zoom * (cameraPos.x - testImage.width/2) + windowSize.x/2
+
+	SDL_Point adjMousePos = {
+		mousePos.x - cameraPos.x - (windowSize.x - testImage.width)/2, 
+		mousePos.y - cameraPos.y - (windowSize.y - testImage.height)/2
+	}; 
+	if(mouseButtons[0].down){
 		//testImage.pixels[(int)mousePos.x + (int)mousePos.y * testImage.width] = 0xFF000000;
 		if(mouseButtons[0].pressed)
-			setPixel(&testImage, (int)mousePos.x, (int)mousePos.y, drawColour);
+			setPixel(&testImage, adjMousePos.x, adjMousePos.y, drawColour);
 		else
-			drawHamLine(&testImage, (SDL_Point){lastMousePos.x, lastMousePos.y}, (SDL_Point){mousePos.x, mousePos.y}, drawColour);
-		lastMousePos = mousePos;
+			drawHamLine(&testImage, lastMousePos, adjMousePos, drawColour);
+		lastMousePos = adjMousePos;
+		updateImage = true;
 	}
 
-	SDL_UpdateTexture(testImage.texture, NULL, testImage.pixels, testImage.width * sizeof(Uint32));
-	SDL_RenderTexture(renderer, testImage.texture, &(SDL_FRect){0, 0, testImage.width, testImage.height}, &(SDL_FRect){0, 0, testImage.width, testImage.height});
+	if(updateImage)
+		SDL_UpdateTexture(testImage.texture, NULL, testImage.pixels, testImage.width * sizeof(Uint32));
+	updateImage = false;
+
+	SDL_RenderTexture(
+		renderer, 
+		testImage.texture, 
+		&(SDL_FRect){0, 0, testImage.width, testImage.height}, 
+		&(SDL_FRect){zoom * (cameraPos.x - testImage.width/2) + windowSize.x/2, zoom * (cameraPos.y - testImage.height/2) + windowSize.y/2, testImage.width * zoom, testImage.height * zoom}
+	);
 	SDL_RenderPresent(renderer);
 
 	return SDL_APP_CONTINUE;
@@ -108,6 +148,7 @@ Uint32 colourTo32(SDL_Color colour){
 }
 
 void setPixel(Image* image, Uint32 posX, Uint32 posY, SDL_Color colour){
+	if(!between(posX, 0, image->width - 1) || !between(posY, 0, image->height - 1)) return;
 	image->pixels[posX + posY * image->width] = colourTo32(colour);
 }
 

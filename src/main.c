@@ -26,10 +26,10 @@ bool updateImage = true;
 
 bool between(float input, float min, float max){return(input >= min && input <= max);}
 
-void setPixel(Image* image, Uint32 posX, Uint32 posY, SDL_Color colour);
-int drawHamLine(Image* image, SDL_Point pointA, SDL_Point pointB, SDL_Color colour);
+void setPixel(Image* image, Uint32 posX, Uint32 posY, SDL_FColor colour);
+int drawHamLine(Image* image, SDL_Point pointA, SDL_Point pointB, SDL_FColor colour);
 
-SDL_Color drawColour = {0, 0, 0, 1};
+SDL_FColor drawColour = {0, 0, 0, 1};
 
 SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]){
 	(void)appstate; (void)argc; (void)argv;
@@ -69,14 +69,17 @@ SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event){
 	if(event->type == SDL_EVENT_MOUSE_WHEEL){
 		
 		if((SDL_GetWindowFlags(window) & SDL_WINDOW_INPUT_FOCUS)){
-			float zoomSpeed = max(0.1, sqrt(zoom) / 10);
+			float zoomSpeed = 0.1;
 			float zoomMin = 0.1;
 			float zoomMax = 10;
 			
 			float zoomChange = zoomSpeed * (1 - 2 * (event->wheel.y < 0)) * (event->wheel.y != 0);
 			zoom = min(max(zoom + zoomChange, zoomMin), zoomMax);
 
-			//cameraPos = (SDL_FPoint){(mousePos.x - windowSize.x/2), (mousePos.y - windowSize.y/2)};
+			cameraPos = (SDL_FPoint){
+				cameraPos.x + (1 - 2 * (zoomChange < 0)) * (cameraPos.x - (mousePos.x - windowSize.x/2)) / 10, 
+				cameraPos.y + (1 - 2 * (zoomChange < 0)) * (cameraPos.y - (mousePos.y - windowSize.y/2)) / 10
+			};
 
 			if(zoom < 1)
 				SDL_SetTextureScaleMode(testImage.texture, SDL_SCALEMODE_LINEAR);
@@ -108,13 +111,18 @@ SDL_AppResult SDL_AppIterate(void *appstate){
 	SDL_SetRenderDrawColor(renderer, 96, 96, 96, SDL_ALPHA_OPAQUE);
 	SDL_RenderClear(renderer);
 
-	//zoom * (cameraPos.x - testImage.width/2) + windowSize.x/2
+	//mousePos.x = zoom * (cameraPos.x - testImage.width/2 + x) + windowSize.x/2
+	SDL_Point canvasLoc = {zoom * (cameraPos.x - testImage.width/2) + windowSize.x/2, zoom * (cameraPos.y - testImage.height/2) + windowSize.y/2};
 
 	SDL_Point adjMousePos = {
-		mousePos.x - cameraPos.x - (windowSize.x - testImage.width)/2, 
-		mousePos.y - cameraPos.y - (windowSize.y - testImage.height)/2
+		(mousePos.x - canvasLoc.x) / zoom,
+		(mousePos.y - canvasLoc.y) / zoom
 	}; 
-	if(mouseButtons[0].down){
+
+	drawColour = (SDL_FColor){0, 0, 0, 1};
+	if(mouseButtons[2].down) drawColour = (SDL_FColor){1, 1, 1, 1};
+
+	if(mouseButtons[0].down || mouseButtons[2].down){
 		//testImage.pixels[(int)mousePos.x + (int)mousePos.y * testImage.width] = 0xFF000000;
 		if(mouseButtons[0].pressed)
 			setPixel(&testImage, adjMousePos.x, adjMousePos.y, drawColour);
@@ -132,7 +140,7 @@ SDL_AppResult SDL_AppIterate(void *appstate){
 		renderer, 
 		testImage.texture, 
 		&(SDL_FRect){0, 0, testImage.width, testImage.height}, 
-		&(SDL_FRect){zoom * (cameraPos.x - testImage.width/2) + windowSize.x/2, zoom * (cameraPos.y - testImage.height/2) + windowSize.y/2, testImage.width * zoom, testImage.height * zoom}
+		&(SDL_FRect){canvasLoc.x, canvasLoc.y, testImage.width * zoom, testImage.height * zoom}
 	);
 	SDL_RenderPresent(renderer);
 
@@ -143,16 +151,16 @@ void SDL_AppQuit(void *appstate, SDL_AppResult result){
 	(void)appstate; (void)result;
 }
 
-Uint32 colourTo32(SDL_Color colour){
+Uint32 colourTo32(SDL_FColor colour){
 	return (int)(colour.r * 255) + ((int)(colour.g * 255) << 8) + ((int)(colour.b * 255) << 16) + ((int)(colour.a * 255) << 24); 
 }
 
-void setPixel(Image* image, Uint32 posX, Uint32 posY, SDL_Color colour){
+void setPixel(Image* image, Uint32 posX, Uint32 posY, SDL_FColor colour){
 	if(!between(posX, 0, image->width - 1) || !between(posY, 0, image->height - 1)) return;
 	image->pixels[posX + posY * image->width] = colourTo32(colour);
 }
 
-int drawHamLine(Image* image, SDL_Point pointA, SDL_Point pointB, SDL_Color colour){
+int drawHamLine(Image* image, SDL_Point pointA, SDL_Point pointB, SDL_FColor colour){
 	if(abs(pointB.x - pointA.x) > abs(pointB.y - pointA.y)){
 		SDL_Point delta = {abs(pointB.x - pointA.x), pointB.y - pointA.y}; 
 		Sint8 dirX = 1 - 2 * (pointA.x > pointB.x);

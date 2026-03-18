@@ -7,6 +7,7 @@
 #include <math.h>
 
 #include <structs.h>
+#include "render.h"
 
 SDL_Window *window = NULL;
 SDL_Renderer *renderer = NULL;
@@ -21,26 +22,29 @@ SDL_Point lastMousePos;
 float zoom = 1;
 SDL_FPoint cameraPos = {0, 0};
 
-Image testImage = {NULL, NULL, NULL, 256, 256};
+Image testImage = {NULL, NULL, NULL, 640, 480};
 bool updateImage = true;
 
 bool between(float input, float min, float max){return(input >= min && input <= max);}
 
-void setPixel(Image* image, Uint32 posX, Uint32 posY, SDL_FColor colour);
-int drawHamLine(Image* image, SDL_Point pointA, SDL_Point pointB, SDL_FColor colour);
-
+SDL_FColor priColour = {0, 0, 0, 1};
+SDL_FColor secColour = {1, 1, 1, 1};
 SDL_FColor drawColour = {0, 0, 0, 1};
+
+#define KEYBIND_MAX 24
+ButtonMap keyList[KEYBIND_MAX];
+void HandleKeyInput();
 
 SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]){
 	(void)appstate; (void)argc; (void)argv;
 
 	SDL_SetAppMetadata("SDLPaint", "0.0.0", NULL);
 
-	//for(int i=0; i < argc; i++){
-	//	(void)argv[i];
-	//}
+	for(int i=0; i < argc; i++){
+		printf("%s\n", argv[i]);
+	}
 
-	if(!SDL_CreateWindowAndRenderer("SDLPaint", windowSize.x, windowSize.y, SDL_WINDOW_RESIZABLE, &window, &renderer)){
+	if(!SDL_CreateWindowAndRenderer("SDLPaint", windowSize.x, windowSize.y, SDL_WINDOW_RESIZABLE | SDL_WINDOW_MAXIMIZED, &window, &renderer)){
 		SDL_Log("Couldn't create window/renderer: %s", SDL_GetError());
 		return SDL_APP_FAILURE;
 	}
@@ -48,13 +52,14 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]){
 	//SDL_SetRenderVSync(renderer, 1);
 
 	mouseButtons[0].code = SDL_BUTTON_LMASK; mouseButtons[1].code = SDL_BUTTON_MMASK; mouseButtons[2].code = SDL_BUTTON_RMASK;
+	keyList[0].code = SDL_SCANCODE_LCTRL;
 
 	testImage.texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ABGR8888, SDL_TEXTUREACCESS_STREAMING, testImage.width, testImage.height);
 	SDL_SetTextureScaleMode(testImage.texture, SDL_SCALEMODE_NEAREST);
 
 	testImage.pixels = malloc(sizeof(Uint32) * testImage.width * testImage.height);
 	for(Uint32 i=0; i<testImage.width * testImage.height; i++){
-		testImage.pixels[i] = 0xFFFFFFFF;
+		testImage.pixels[i] = colourToInt(secColour);
 	}
 
 	return SDL_APP_CONTINUE;
@@ -67,7 +72,6 @@ SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event){
 	}
 
 	if(event->type == SDL_EVENT_MOUSE_WHEEL){
-		
 		if((SDL_GetWindowFlags(window) & SDL_WINDOW_INPUT_FOCUS)){
 			float zoomSpeed = 0.1;
 			float zoomMin = 0.1;
@@ -108,6 +112,8 @@ SDL_AppResult SDL_AppIterate(void *appstate){
 		}else mouseButtons[i].pressCheck = false;
 	}
 
+	HandleKeyInput();
+
 	SDL_SetRenderDrawColor(renderer, 96, 96, 96, SDL_ALPHA_OPAQUE);
 	SDL_RenderClear(renderer);
 
@@ -119,12 +125,12 @@ SDL_AppResult SDL_AppIterate(void *appstate){
 		(mousePos.y - canvasLoc.y) / zoom
 	}; 
 
-	drawColour = (SDL_FColor){0, 0, 0, 1};
-	if(mouseButtons[2].down) drawColour = (SDL_FColor){1, 1, 1, 1};
+	drawColour = priColour;
+	if(mouseButtons[2].down || keyList[0].down) drawColour = secColour;
 
 	if(mouseButtons[0].down || mouseButtons[2].down){
 		//testImage.pixels[(int)mousePos.x + (int)mousePos.y * testImage.width] = 0xFF000000;
-		if(mouseButtons[0].pressed)
+		if(mouseButtons[0].pressed || mouseButtons[2].pressed)
 			setPixel(&testImage, adjMousePos.x, adjMousePos.y, drawColour);
 		else
 			drawHamLine(&testImage, lastMousePos, adjMousePos, drawColour);
@@ -151,48 +157,17 @@ void SDL_AppQuit(void *appstate, SDL_AppResult result){
 	(void)appstate; (void)result;
 }
 
-Uint32 colourTo32(SDL_FColor colour){
-	return (int)(colour.r * 255) + ((int)(colour.g * 255) << 8) + ((int)(colour.b * 255) << 16) + ((int)(colour.a * 255) << 24); 
-}
-
-void setPixel(Image* image, Uint32 posX, Uint32 posY, SDL_FColor colour){
-	if(!between(posX, 0, image->width - 1) || !between(posY, 0, image->height - 1)) return;
-	image->pixels[posX + posY * image->width] = colourTo32(colour);
-}
-
-int drawHamLine(Image* image, SDL_Point pointA, SDL_Point pointB, SDL_FColor colour){
-	if(abs(pointB.x - pointA.x) > abs(pointB.y - pointA.y)){
-		SDL_Point delta = {abs(pointB.x - pointA.x), pointB.y - pointA.y}; 
-		Sint8 dirX = 1 - 2 * (pointA.x > pointB.x);
-		Sint8 dirY = 1 - 2 * (delta.y < 0);
-		delta.y = delta.y * dirY;
-		if(delta.x == 0) return 1;
-		int decide = 2 * delta.y - delta.x;
-		int newY = pointA.y;
-		for(int i=0; i <= delta.x; i++){
-			setPixel(image, pointA.x + i * dirX, newY, colour);
-			if(decide >= 0){
-				newY+=dirY;
-				decide += -2*delta.x;
+void HandleKeyInput(){
+	const bool* keyState = SDL_GetKeyboardState(NULL);
+	bool hasFocus = SDL_GetWindowFlags(window) & SDL_WINDOW_INPUT_FOCUS;
+	for(int i = 0; i < KEYBIND_MAX; i++){
+		keyList[i].down = hasFocus && keyState[keyList[i].code];
+		keyList[i].pressed = false;
+		if(keyList[i].down){
+			if(!keyList[i].pressCheck){
+				keyList[i].pressCheck = true;
+				keyList[i].pressed = true;
 			}
-			decide += 2*delta.y;
-		}
-	}else{
-		SDL_Point delta = {pointB.x - pointA.x, abs(pointB.y - pointA.y)}; 
-		Sint8 dirY = 1 - 2 * (pointA.y > pointB.y);
-		Sint8 dirX = 1 - 2 * (delta.x < 0);
-		delta.x = delta.x * dirX;
-		if(delta.y == 0) return 1;
-		int decide = 2 * delta.x - delta.y;
-		int newX = pointA.x;
-		for(int i=0; i <= delta.y; i++){
-			setPixel(image, newX, pointA.y + i * dirY, colour);
-			if(decide >= 0){
-				newX+=dirX;
-				decide += -2*delta.y;
-			}
-			decide += 2*delta.x;
-		}
+		}else keyList[i].pressCheck = false;
 	}
-	return 0;
 }

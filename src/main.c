@@ -1,6 +1,7 @@
 #define SDL_MAIN_USE_CALLBACKS 1
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
+#include <SDL3_image/SDL_image.h>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -8,6 +9,7 @@
 
 #include <structs.h>
 #include "render.h"
+#include "files.h"
 
 SDL_Window *window = NULL;
 SDL_Renderer *renderer = NULL;
@@ -22,8 +24,11 @@ SDL_Point lastMousePos;
 float zoom = 1;
 SDL_FPoint cameraPos = {0, 0};
 
-Image testImage = {NULL, NULL, NULL, 640, 480};
+//Image testImage = {NULL, NULL, NULL, 640, 480};
+Image* currImage = NULL;
 bool updateImage = true;
+
+SDL_Texture* checkerTex = false;
 
 bool between(float input, float min, float max){return(input >= min && input <= max);}
 
@@ -49,18 +54,19 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]){
 		return SDL_APP_FAILURE;
 	}
 
+	if(argc >= 1 && argv[1]){
+		currImage = loadImageFile(argv[1]);
+	}
+
 	//SDL_SetRenderVSync(renderer, 1);
+
+	checkerTex = newTexture("assets/checkers.png", SDL_SCALEMODE_NEAREST); //doenst load when opened from file open prompt (current directory changed)
 
 	mouseButtons[0].code = SDL_BUTTON_LMASK; mouseButtons[1].code = SDL_BUTTON_MMASK; mouseButtons[2].code = SDL_BUTTON_RMASK;
 	keyList[0].code = SDL_SCANCODE_LCTRL;
 
-	testImage.texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ABGR8888, SDL_TEXTUREACCESS_STREAMING, testImage.width, testImage.height);
-	SDL_SetTextureScaleMode(testImage.texture, SDL_SCALEMODE_NEAREST);
-
-	testImage.pixels = malloc(sizeof(Uint32) * testImage.width * testImage.height);
-	for(Uint32 i=0; i<testImage.width * testImage.height; i++){
-		testImage.pixels[i] = colourToInt(secColour);
-	}
+	if(!currImage)
+		currImage = newImageItem(320, 240, 0xFFFFFFFF);
 
 	return SDL_APP_CONTINUE;
 }
@@ -86,9 +92,9 @@ SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event){
 			};
 
 			if(zoom < 1)
-				SDL_SetTextureScaleMode(testImage.texture, SDL_SCALEMODE_LINEAR);
+				SDL_SetTextureScaleMode(currImage->texture, SDL_SCALEMODE_LINEAR);
 			else
-				SDL_SetTextureScaleMode(testImage.texture, SDL_SCALEMODE_NEAREST);
+				SDL_SetTextureScaleMode(currImage->texture, SDL_SCALEMODE_NEAREST);
 		}
 	}
 	
@@ -118,7 +124,7 @@ SDL_AppResult SDL_AppIterate(void *appstate){
 	SDL_RenderClear(renderer);
 
 	//mousePos.x = zoom * (cameraPos.x - testImage.width/2 + x) + windowSize.x/2
-	SDL_Point canvasLoc = {zoom * (cameraPos.x - testImage.width/2) + windowSize.x/2, zoom * (cameraPos.y - testImage.height/2) + windowSize.y/2};
+	SDL_Point canvasLoc = {zoom * (cameraPos.x - currImage->width/2) + windowSize.x/2, zoom * (cameraPos.y - currImage->height/2) + windowSize.y/2};
 
 	SDL_Point adjMousePos = {
 		(mousePos.x - canvasLoc.x) / zoom,
@@ -131,22 +137,25 @@ SDL_AppResult SDL_AppIterate(void *appstate){
 	if(mouseButtons[0].down || mouseButtons[2].down){
 		//testImage.pixels[(int)mousePos.x + (int)mousePos.y * testImage.width] = 0xFF000000;
 		if(mouseButtons[0].pressed || mouseButtons[2].pressed)
-			setPixel(&testImage, adjMousePos.x, adjMousePos.y, drawColour);
+			setPixel(currImage, adjMousePos.x, adjMousePos.y, drawColour);
 		else
-			drawHamLine(&testImage, lastMousePos, adjMousePos, drawColour);
+			drawHamLine(currImage, lastMousePos, adjMousePos, drawColour);
 		lastMousePos = adjMousePos;
 		updateImage = true;
 	}
 
 	if(updateImage)
-		SDL_UpdateTexture(testImage.texture, NULL, testImage.pixels, testImage.width * sizeof(Uint32));
+		SDL_UpdateTexture(currImage->texture, NULL, currImage->pixels, currImage->width * sizeof(Uint32));
 	updateImage = false;
 
+	SDL_FRect imageDest = {canvasLoc.x, canvasLoc.y, currImage->width * zoom, currImage->height * zoom};
+
+	SDL_RenderTextureTiled(renderer, checkerTex, &(SDL_FRect){(int)max(imageDest.x, 0) % 32, (int)max(imageDest.y, 0) % 32, 32, 32}, 1, &imageDest);
 	SDL_RenderTexture(
 		renderer, 
-		testImage.texture, 
-		&(SDL_FRect){0, 0, testImage.width, testImage.height}, 
-		&(SDL_FRect){canvasLoc.x, canvasLoc.y, testImage.width * zoom, testImage.height * zoom}
+		currImage->texture, 
+		&(SDL_FRect){0, 0, currImage->width, currImage->height}, 
+		&imageDest
 	);
 	SDL_RenderPresent(renderer);
 

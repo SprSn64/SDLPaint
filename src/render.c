@@ -1,9 +1,10 @@
 #include <SDL3/SDL.h>
-#include <structs.h>
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+
+#include <structs.h>
 
 bool between(float input, float min, float max);
 

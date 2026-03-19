@@ -1,3 +1,4 @@
+#include "render.h"
 #include <SDL3/SDL.h>
 
 #include <stdio.h>
@@ -33,15 +34,15 @@ SDL_FColor colourMult(SDL_FColor colA, SDL_FColor colB){
 	return (SDL_FColor){colA.r * colB.r, colA.g * colB.g, colA.b * colB.b, colA.a * colB.a};
 }
 
-void setPixel(Image* image, Uint32 posX, Uint32 posY, SDL_FColor colour){
-	if(!image || !between(posX, 0, image->width - 1) || !between(posY, 0, image->height - 1) || colour.a == 0) return;
+void setPixel(Image* image, Uint32 posX, Uint32 posY, SDL_FColor colour, bool override){
+	if(!image || !between(posX, 0, image->width - 1) || !between(posY, 0, image->height - 1) || (colour.a == 0 && !override)) return;
 	SDL_FColor newColour = colour;
-	if(colour.a != 1)
+	if(colour.a != 1 && !override)
 		newColour = colourLerp(intToColour(image->pixels[posX + posY * image->width]), colour, colour.a);
 	image->pixels[posX + posY * image->width] = colourToInt(newColour);
 }
 
-int drawHamLine(Image* image, SDL_Point pointA, SDL_Point pointB, SDL_FColor colour){
+int drawHamLine(Image* image, SDL_Point pointA, SDL_Point pointB, SDL_FColor colour, bool override){
 	if(abs(pointB.x - pointA.x) > abs(pointB.y - pointA.y)){
 		SDL_Point delta = {abs(pointB.x - pointA.x), pointB.y - pointA.y}; 
 		Sint8 dirX = 1 - 2 * (pointA.x > pointB.x);
@@ -51,7 +52,7 @@ int drawHamLine(Image* image, SDL_Point pointA, SDL_Point pointB, SDL_FColor col
 		int decide = 2 * delta.y - delta.x;
 		int newY = pointA.y;
 		for(int i=0; i <= delta.x; i++){
-			setPixel(image, pointA.x + i * dirX, newY, colour);
+			setPixel(image, pointA.x + i * dirX, newY, colour, override);
 			if(decide >= 0){
 				newY+=dirY;
 				decide += -2*delta.x;
@@ -67,7 +68,7 @@ int drawHamLine(Image* image, SDL_Point pointA, SDL_Point pointB, SDL_FColor col
 		int decide = 2 * delta.x - delta.y;
 		int newX = pointA.x;
 		for(int i=0; i <= delta.y; i++){
-			setPixel(image, newX, pointA.y + i * dirY, colour);
+			setPixel(image, newX, pointA.y + i * dirY, colour, override);
 			if(decide >= 0){
 				newX+=dirX;
 				decide += -2*delta.y;

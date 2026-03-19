@@ -11,11 +11,22 @@ typedef struct{
 	Uint32 code;
 } ButtonMap;
 
+typedef struct Layer{
+	Uint32 *pixels;
+	Uint32 blend;
+	float alpha;
+
+	struct Layer* prevLayer;
+	struct Layer* nextLayer;
+} Layer;
+
 typedef struct{
 	char* path;
 	SDL_Texture* texture;
 	Uint32 *pixels;
 	Uint32 width, height;
+
+	Layer* headLayer;
 } Image;
 
 #endif

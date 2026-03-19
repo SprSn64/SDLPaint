@@ -10,6 +10,7 @@
 #include <structs.h>
 #include "render.h"
 #include "files.h"
+#include "panels.h"
 
 SDL_Window *window = NULL;
 SDL_Renderer *renderer = NULL;
@@ -36,13 +37,20 @@ SDL_FColor priColour = {0, 0, 0, 1};
 SDL_FColor secColour = {1, 1, 1, 1};
 SDL_FColor drawColour = {0, 0, 0, 1};
 
+Uint32 toolMode = TOOL_BRUSH;
+
 #define KEYBIND_MAX 24
 ButtonMap keyList[KEYBIND_MAX];
 void HandleKeyInput();
 
+const char* basePath;
+
+extern Panel testPanel;
+
 SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]){
 	(void)appstate; (void)argc; (void)argv;
 
+	basePath = SDL_GetBasePath();
 	SDL_SetAppMetadata("SDLPaint", "0.0.0", NULL);
 
 	for(int i=0; i < argc; i++){
@@ -60,13 +68,16 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]){
 
 	//SDL_SetRenderVSync(renderer, 1);
 
-	checkerTex = newTexture("assets/checkers.png", SDL_SCALEMODE_NEAREST); //doenst load when opened from file open prompt (current directory changed)
+	char checkerPath[256]; sprintf(checkerPath, "%s%s", basePath, "assets/checkers.png");
+	checkerTex = newTexture(checkerPath, SDL_SCALEMODE_NEAREST);
 
 	mouseButtons[0].code = SDL_BUTTON_LMASK; mouseButtons[1].code = SDL_BUTTON_MMASK; mouseButtons[2].code = SDL_BUTTON_RMASK;
 	keyList[0].code = SDL_SCANCODE_LCTRL;
 
 	if(!currImage)
-		currImage = newImageItem(320, 240, 0xFFFFFFFF);
+		currImage = newImageItem(640, 480, 0xFFFFFFFF);
+
+	initTestPanel();
 
 	return SDL_APP_CONTINUE;
 }
@@ -123,6 +134,8 @@ SDL_AppResult SDL_AppIterate(void *appstate){
 	SDL_SetRenderDrawColor(renderer, 96, 96, 96, SDL_ALPHA_OPAQUE);
 	SDL_RenderClear(renderer);
 
+	updatePanel(&testPanel);
+
 	//mousePos.x = zoom * (cameraPos.x - testImage.width/2 + x) + windowSize.x/2
 	SDL_Point canvasLoc = {zoom * (cameraPos.x - currImage->width/2) + windowSize.x/2, zoom * (cameraPos.y - currImage->height/2) + windowSize.y/2};
 
@@ -132,16 +145,30 @@ SDL_AppResult SDL_AppIterate(void *appstate){
 	}; 
 
 	drawColour = priColour;
-	if(mouseButtons[2].down || keyList[0].down) drawColour = secColour;
+	if(mouseButtons[2].down) drawColour = secColour;
 
-	if(mouseButtons[0].down || mouseButtons[2].down){
-		//testImage.pixels[(int)mousePos.x + (int)mousePos.y * testImage.width] = 0xFF000000;
-		if(mouseButtons[0].pressed || mouseButtons[2].pressed)
-			setPixel(currImage, adjMousePos.x, adjMousePos.y, drawColour);
-		else
-			drawHamLine(currImage, lastMousePos, adjMousePos, drawColour);
-		lastMousePos = adjMousePos;
-		updateImage = true;
+	//shit code for now
+	if(toolMode == TOOL_BRUSH){
+		if(mouseButtons[0].down || mouseButtons[2].down){
+			if(mouseButtons[0].pressed || mouseButtons[2].pressed){
+				setPixel(currImage, adjMousePos.x, adjMousePos.y, drawColour, false);
+			}else{
+				drawHamLine(currImage, lastMousePos, adjMousePos, drawColour, false);
+			}
+			lastMousePos = adjMousePos;
+			updateImage = true;
+		}
+	}
+	if(toolMode == TOOL_ERASE){
+		if(mouseButtons[0].down || mouseButtons[2].down){
+			if(mouseButtons[0].pressed || mouseButtons[2].pressed){
+				setPixel(currImage, adjMousePos.x, adjMousePos.y, (SDL_FColor){0, 0, 0, 0}, true);
+			}else{
+				drawHamLine(currImage, lastMousePos, adjMousePos, (SDL_FColor){0, 0, 0, 0}, true);
+			}
+			lastMousePos = adjMousePos;
+			updateImage = true;
+		}
 	}
 
 	if(updateImage)
@@ -157,6 +184,9 @@ SDL_AppResult SDL_AppIterate(void *appstate){
 		&(SDL_FRect){0, 0, currImage->width, currImage->height}, 
 		&imageDest
 	);
+
+	drawPanel(&testPanel);
+
 	SDL_RenderPresent(renderer);
 
 	return SDL_APP_CONTINUE;

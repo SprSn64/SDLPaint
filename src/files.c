@@ -1,3 +1,4 @@
+#include "files.h"
 #include <SDL3/SDL.h>
 #include <SDL3_image/SDL_image.h>
 
@@ -33,7 +34,7 @@ Image* loadImageFile(char* path){
 	newImg->path = strdup(path);
 
 	printf("Image size is %d by %d\n", newSurface->w, newSurface->h);
-	memcpy(newImg->pixels, newSurface->pixels, newSurface->w*newSurface->h * sizeof(Uint32)); 
+	memcpy(newImg->pixels, newSurface->pixels, newSurface->w*newSurface->h * sizeof(Uint32)); //convert surface format to ABGR8888
 	SDL_UpdateTexture(newImg->texture, NULL, newImg->pixels, newImg->width * sizeof(Uint32));
 
 	SDL_DestroySurface(newSurface);

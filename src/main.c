@@ -177,7 +177,7 @@ SDL_AppResult SDL_AppIterate(void *appstate){
 
 	SDL_FRect imageDest = {canvasLoc.x, canvasLoc.y, currImage->width * zoom, currImage->height * zoom};
 
-	SDL_RenderTextureTiled(renderer, checkerTex, &(SDL_FRect){(int)max(imageDest.x, 0) % 32, (int)max(imageDest.y, 0) % 32, 32, 32}, 1, &imageDest);
+	SDL_RenderTextureTiled(renderer, checkerTex, NULL, 1, &imageDest);
 	SDL_RenderTexture(
 		renderer, 
 		currImage->texture, 

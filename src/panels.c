@@ -17,25 +17,25 @@ extern SDL_Renderer *renderer;
 extern SDL_FPoint mousePos;
 extern ButtonMap mouseButtons[3];
 
-Panel testPanel = {(SDL_FRect){4, 4, 38, 256}, NULL, 2, PANEL_VISIBLE};
+Panel testPanel = {(SDL_FRect){4, 4, 38, 256}, NULL, 3, PANEL_VISIBLE};
 
-Uint32 toolList[2] = {TOOL_BRUSH, TOOL_ERASE};
+Uint32 toolList[3] = {TOOL_BRUSH, TOOL_ERASE, TOOL_COLOURPICK};
 
 extern Uint32 toolMode;
 void buttonSetTool(Button* item){
 	for(int i=0; i<testPanel.buttonCount; i++){
-		if(&testPanel.buttonList[i] == item){
-			toolMode = toolList[i];
-			return;
-		}
+		if(&testPanel.buttonList[i] != item) continue;
+		toolMode = toolList[i];
+		return;
 	}
 }
 
 void initTestPanel(){
-	Button* newButtons = malloc(2 * sizeof(Button));
+	Button* newButtons = malloc(3 * sizeof(Button));
 
 	newButtons[0] = (Button){"Br", (SDL_FRect){2, 2, 16, 16}, INPUTTYPE_BUTTON, buttonSetTool, true, false, false, NULL};
 	newButtons[1] = (Button){"Er", (SDL_FRect){20, 2, 16, 16}, INPUTTYPE_BUTTON, buttonSetTool, true, false, false, NULL};
+	newButtons[2] = (Button){"Co", (SDL_FRect){2, 20, 16, 16}, INPUTTYPE_BUTTON, buttonSetTool, true, false, false, NULL};
 
 	testPanel.buttonList = newButtons;
 }

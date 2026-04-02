@@ -10,8 +10,9 @@ typedef enum toolModes{
 	TOOL_COLOURPICK
 } toolModes;
 
-
 Uint32 colourToInt(SDL_FColor colour);
+SDL_FColor intToColour(Uint32 colour);
+
 void setPixel(Image* image, Uint32 posX, Uint32 posY, SDL_FColor colour, bool override);
 int drawHamLine(Image* image, SDL_Point pointA, SDL_Point pointB, SDL_FColor colour, bool override);
 

@@ -147,28 +147,31 @@ SDL_AppResult SDL_AppIterate(void *appstate){
 	drawColour = priColour;
 	if(mouseButtons[2].down) drawColour = secColour;
 
-	//shit code for now
-	if(toolMode == TOOL_BRUSH){
-		if(mouseButtons[0].down || mouseButtons[2].down){
-			if(mouseButtons[0].pressed || mouseButtons[2].pressed){
+	switch(toolMode){
+		case TOOL_BRUSH:
+			if(!mouseButtons[0].down && !mouseButtons[2].down) break;
+
+			if(mouseButtons[0].pressed || mouseButtons[2].pressed)
 				setPixel(currImage, adjMousePos.x, adjMousePos.y, drawColour, false);
-			}else{
+			else
 				drawHamLine(currImage, lastMousePos, adjMousePos, drawColour, false);
-			}
-			lastMousePos = adjMousePos;
-			updateImage = true;
-		}
-	}
-	if(toolMode == TOOL_ERASE){
-		if(mouseButtons[0].down || mouseButtons[2].down){
-			if(mouseButtons[0].pressed || mouseButtons[2].pressed){
+			lastMousePos = adjMousePos; updateImage = true; 
+			break;
+		case TOOL_ERASE:
+			if(!mouseButtons[0].down && !mouseButtons[2].down) break;
+
+			if(mouseButtons[0].pressed || mouseButtons[2].pressed)
 				setPixel(currImage, adjMousePos.x, adjMousePos.y, (SDL_FColor){0, 0, 0, 0}, true);
-			}else{
+			else
 				drawHamLine(currImage, lastMousePos, adjMousePos, (SDL_FColor){0, 0, 0, 0}, true);
-			}
-			lastMousePos = adjMousePos;
-			updateImage = true;
-		}
+			lastMousePos = adjMousePos; updateImage = true;
+			break;
+		case TOOL_COLOURPICK:
+			if(!between(adjMousePos.x, 0, currImage->width) || !between(adjMousePos.y, 0, currImage->height)) break;
+			SDL_FColor hoverColour = intToColour(currImage->pixels[(adjMousePos.x % currImage->width) + (adjMousePos.y % currImage->height) * currImage->width]);
+			if(mouseButtons[0].down) priColour = hoverColour;
+			if(mouseButtons[2].down) secColour = hoverColour;
+			break;
 	}
 
 	if(updateImage)
@@ -184,6 +187,11 @@ SDL_AppResult SDL_AppIterate(void *appstate){
 		&(SDL_FRect){0, 0, currImage->width, currImage->height}, 
 		&imageDest
 	);
+
+	SDL_SetRenderDrawColor(renderer, secColour.r * 255, secColour.g * 255, secColour.b * 255, secColour.a * 255);
+	SDL_RenderFillRect(renderer, &(SDL_FRect){24, windowSize.y - 40, 32, 32});
+	SDL_SetRenderDrawColor(renderer, priColour.r * 255, priColour.g * 255, priColour.b * 255, priColour.a * 255);
+	SDL_RenderFillRect(renderer, &(SDL_FRect){8, windowSize.y - 56, 32, 32});
 
 	drawPanel(&testPanel);
 

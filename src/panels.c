@@ -17,27 +17,28 @@ extern SDL_Renderer *renderer;
 extern SDL_FPoint mousePos;
 extern ButtonMap mouseButtons[3];
 
-Panel testPanel = {(SDL_FRect){4, 4, 38, 256}, NULL, 3, PANEL_VISIBLE};
+Panel toolPanel = {(SDL_FRect){4, 4, 38, 256}, NULL, 3, PANEL_VISIBLE};
+Panel colourPanel = {(SDL_FRect){48, 4, 320, 256}, NULL, 0, PANEL_VISIBLE};
 
 Uint32 toolList[3] = {TOOL_BRUSH, TOOL_ERASE, TOOL_COLOURPICK};
 
 extern Uint32 toolMode;
 void buttonSetTool(Button* item){
-	for(int i=0; i<testPanel.buttonCount; i++){
-		if(&testPanel.buttonList[i] != item) continue;
+	for(int i=0; i<toolPanel.buttonCount; i++){
+		if(&toolPanel.buttonList[i] != item) continue;
 		toolMode = toolList[i];
 		return;
 	}
 }
 
-void initTestPanel(){
+void initToolPanel(){
 	Button* newButtons = malloc(3 * sizeof(Button));
 
 	newButtons[0] = (Button){"Br", (SDL_FRect){2, 2, 16, 16}, INPUTTYPE_BUTTON, buttonSetTool, true, false, false, NULL};
 	newButtons[1] = (Button){"Er", (SDL_FRect){20, 2, 16, 16}, INPUTTYPE_BUTTON, buttonSetTool, true, false, false, NULL};
 	newButtons[2] = (Button){"Co", (SDL_FRect){2, 20, 16, 16}, INPUTTYPE_BUTTON, buttonSetTool, true, false, false, NULL};
 
-	testPanel.buttonList = newButtons;
+	toolPanel.buttonList = newButtons;
 }
 
 bool updateButton(Button* item, SDL_Point* offset){
@@ -97,13 +98,25 @@ void updatePanel(Panel* panel){
 	}
 }
 
+extern SDL_FColor priColour;
+extern SDL_FColor secColour;
+void drawColourPanel(Panel* panel){
+	SDL_SetRenderDrawColor(renderer, secColour.r * 255, secColour.g * 255, secColour.b * 255, secColour.a * 255);
+	SDL_RenderFillRect(renderer, &(SDL_FRect){panel->frame.x + 18, panel->frame.y + 18, 32, 32});
+	SDL_SetRenderDrawColor(renderer, priColour.r * 255, priColour.g * 255, priColour.b * 255, priColour.a * 255);
+	SDL_RenderFillRect(renderer, &(SDL_FRect){panel->frame.x + 2, panel->frame.y + 2, 32, 32});
+}
+
 void drawPanel(Panel* panel){
 	if(!(panel->flags & PANEL_VISIBLE)) return;
 
-	SDL_SetRenderDrawColor(renderer, 192, 192, 192, 255);
+	SDL_SetRenderDrawColor(renderer, 192, 192, 192, 192);
 	SDL_RenderFillRect(renderer, &panel->frame);
 
 	for(int i=0; i<panel->buttonCount; i++){
 		drawButton(&panel->buttonList[i], &(SDL_Point){panel->frame.x, panel->frame.y});
 	}
+
+	if(panel == &colourPanel)
+		drawColourPanel(panel);
 }

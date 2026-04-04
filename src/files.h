@@ -9,5 +9,7 @@ Image* loadImageFile(char* path);
 
 SDL_Texture *newTexture(char* path, SDL_ScaleMode scaleMode);
 
+bool refreshImage(Image* item);
+
 #endif
 

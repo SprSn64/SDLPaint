@@ -11,11 +11,28 @@
 
 extern SDL_Renderer *renderer;
 
+Layer* newLayer(Image* parent, Uint32 colour){
+	Layer* newLayer = malloc(sizeof(Layer));
+	if(!newLayer) return NULL;
+
+	newLayer->pixels = malloc(sizeof(Uint32) * parent->width * parent->height);
+	for(Uint32 i=0; i< parent->width * parent->height; i++){
+		newLayer->pixels[i] = colour;
+	}
+
+	newLayer->image = parent;
+	//if(!parent->headLayer)
+		parent->headLayer = newLayer;
+
+	return newLayer;
+}
+
 Image* newImageItem(Uint16 width, Uint16 height, Uint32 colour){
 	Image* newImg = malloc(sizeof(Image));
 	if(!newImg) return NULL;
 
 	newImg->width = width; newImg->height = height;
+	newLayer(newImg, colour);
 
 	newImg->pixels = malloc(sizeof(Uint32) * width * height);
 	for(Uint32 i=0; i<width * height; i++){
@@ -49,4 +66,25 @@ SDL_Texture *newTexture(char* path, SDL_ScaleMode scaleMode){
 	}
 	SDL_SetTextureScaleMode(texture, scaleMode);
 	return texture;
+}
+
+bool refreshImage(Image* item){
+	printf("meatball ");
+	if(!item->headLayer) return 1;
+
+	/*for(Uint32 i=0; i<item->width * item->height; i++){
+		item->pixels[i] = 0x00000000;
+	}*/
+
+	Layer* currLayer = item->headLayer;
+	while(currLayer){
+		for(Uint32 i=0; i<item->width * item->height; i++){
+			item->pixels[i] = currLayer->pixels[i];
+		}
+		currLayer = currLayer->next;
+	}
+
+	SDL_UpdateTexture(item->texture, NULL, item->pixels, item->width * sizeof(Uint32));
+
+	return 0;
 }

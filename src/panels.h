@@ -39,7 +39,7 @@ typedef struct Panel{
 	Uint32 flags;
 } Panel;
 
-void initTestPanel();
+void initToolPanel();
 
 bool updateButton(Button* item, SDL_Point* offset);
 void drawButton(Button* item, SDL_Point* offset);

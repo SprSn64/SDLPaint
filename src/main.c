@@ -27,6 +27,7 @@ SDL_FPoint cameraPos = {0, 0};
 
 //Image testImage = {NULL, NULL, NULL, 640, 480};
 Image* currImage = NULL;
+Layer* currLayer = NULL;
 bool updateImage = true;
 
 SDL_Texture* checkerTex = false;
@@ -45,7 +46,8 @@ void HandleKeyInput();
 
 const char* basePath;
 
-extern Panel testPanel;
+extern Panel toolPanel;
+extern Panel colourPanel;
 
 SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]){
 	(void)appstate; (void)argc; (void)argv;
@@ -76,8 +78,10 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]){
 
 	if(!currImage)
 		currImage = newImageItem(640, 480, 0xFFFFFFFF);
+	currLayer = currImage->headLayer;
 
-	initTestPanel();
+	initToolPanel();
+	SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
 
 	return SDL_APP_CONTINUE;
 }
@@ -134,7 +138,7 @@ SDL_AppResult SDL_AppIterate(void *appstate){
 	SDL_SetRenderDrawColor(renderer, 96, 96, 96, SDL_ALPHA_OPAQUE);
 	SDL_RenderClear(renderer);
 
-	updatePanel(&testPanel);
+	updatePanel(&toolPanel); updatePanel(&colourPanel);
 
 	//mousePos.x = zoom * (cameraPos.x - testImage.width/2 + x) + windowSize.x/2
 	SDL_Point canvasLoc = {zoom * (cameraPos.x - currImage->width/2) + windowSize.x/2, zoom * (cameraPos.y - currImage->height/2) + windowSize.y/2};
@@ -188,12 +192,7 @@ SDL_AppResult SDL_AppIterate(void *appstate){
 		&imageDest
 	);
 
-	SDL_SetRenderDrawColor(renderer, secColour.r * 255, secColour.g * 255, secColour.b * 255, secColour.a * 255);
-	SDL_RenderFillRect(renderer, &(SDL_FRect){24, windowSize.y - 40, 32, 32});
-	SDL_SetRenderDrawColor(renderer, priColour.r * 255, priColour.g * 255, priColour.b * 255, priColour.a * 255);
-	SDL_RenderFillRect(renderer, &(SDL_FRect){8, windowSize.y - 56, 32, 32});
-
-	drawPanel(&testPanel);
+	drawPanel(&toolPanel); drawPanel(&colourPanel);
 
 	SDL_RenderPresent(renderer);
 

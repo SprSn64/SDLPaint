@@ -16,4 +16,7 @@ SDL_FColor intToColour(Uint32 colour);
 void setPixel(Image* image, Uint32 posX, Uint32 posY, SDL_FColor colour, bool override);
 int drawHamLine(Image* image, SDL_Point pointA, SDL_Point pointB, SDL_FColor colour, bool override);
 
+void drawRect(Image* image, Uint16 posX, Uint16 posY, Uint16 width, Uint16 height, SDL_FColor colour, bool override);
+void drawBar(Image* image, SDL_Point pointA, SDL_Point pointB, float thickness, SDL_FColor colour, bool override);
+
 #endif

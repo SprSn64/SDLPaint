@@ -34,9 +34,12 @@ SDL_Texture* checkerTex = false;
 
 bool between(float input, float min, float max){return(input >= min && input <= max);}
 
-SDL_FColor priColour = {0, 0, 0, 1};
+SDL_FColor priColour = {0, 0, 0, 0.4};
 SDL_FColor secColour = {1, 1, 1, 1};
 SDL_FColor drawColour = {0, 0, 0, 1};
+
+float brushSize = 3;
+float eraserSize = 8;
 
 Uint32 toolMode = TOOL_BRUSH;
 
@@ -74,7 +77,7 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]){
 	checkerTex = newTexture(checkerPath, SDL_SCALEMODE_NEAREST);
 
 	mouseButtons[0].code = SDL_BUTTON_LMASK; mouseButtons[1].code = SDL_BUTTON_MMASK; mouseButtons[2].code = SDL_BUTTON_RMASK;
-	keyList[0].code = SDL_SCANCODE_LCTRL;
+	keyList[0].code = SDL_SCANCODE_LCTRL; keyList[1].code = SDL_SCANCODE_S; keyList[2].code = SDL_SCANCODE_O;
 
 	if(!currImage)
 		currImage = newImageItem(640, 480, 0xFFFFFFFF);
@@ -156,18 +159,22 @@ SDL_AppResult SDL_AppIterate(void *appstate){
 			if(!mouseButtons[0].down && !mouseButtons[2].down) break;
 
 			if(mouseButtons[0].pressed || mouseButtons[2].pressed)
-				setPixel(currImage, adjMousePos.x, adjMousePos.y, drawColour, false);
+				//setPixel(currImage, adjMousePos.x, adjMousePos.y, drawColour, false);
+				drawRect(currImage, adjMousePos.x - brushSize/2, adjMousePos.y - brushSize/2, brushSize, brushSize, drawColour, false);
 			else
-				drawHamLine(currImage, lastMousePos, adjMousePos, drawColour, false);
+				//drawHamLine(currImage, lastMousePos, adjMousePos, drawColour, false);
+				drawBar(currImage, lastMousePos, adjMousePos, brushSize, drawColour, false);
 			lastMousePos = adjMousePos; updateImage = true; 
 			break;
 		case TOOL_ERASE:
 			if(!mouseButtons[0].down && !mouseButtons[2].down) break;
 
 			if(mouseButtons[0].pressed || mouseButtons[2].pressed)
-				setPixel(currImage, adjMousePos.x, adjMousePos.y, (SDL_FColor){0, 0, 0, 0}, true);
+				//setPixel(currImage, adjMousePos.x, adjMousePos.y, (SDL_FColor){0, 0, 0, 0}, true);
+				drawRect(currImage, adjMousePos.x - eraserSize/2, adjMousePos.y - eraserSize/2, eraserSize, eraserSize, (SDL_FColor){0, 0, 0, 0}, true);
 			else
-				drawHamLine(currImage, lastMousePos, adjMousePos, (SDL_FColor){0, 0, 0, 0}, true);
+				//drawHamLine(currImage, lastMousePos, adjMousePos, (SDL_FColor){0, 0, 0, 0}, true);
+				drawBar(currImage, lastMousePos, adjMousePos, eraserSize, (SDL_FColor){0, 0, 0, 0}, true);
 			lastMousePos = adjMousePos; updateImage = true;
 			break;
 		case TOOL_COLOURPICK:

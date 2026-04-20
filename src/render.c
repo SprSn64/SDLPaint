@@ -40,7 +40,7 @@ void setPixel(Image* image, Uint32 posX, Uint32 posY, SDL_FColor colour, bool ov
 	if(colour.a != 1 && !override){
 		SDL_FColor colourGot = intToColour(image->pixels[posX + posY * image->width]);
 		newColour = colourLerp(colourGot, colour, colour.a);
-		newColour.a = colourGot.a;
+		newColour.a = min(colourGot.a + colour.a, 1);
 	}
 	image->pixels[posX + posY * image->width] = colourToInt(newColour);
 }

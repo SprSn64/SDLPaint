@@ -92,7 +92,11 @@ void drawButton(Button* item, SDL_Point* offset){
 	}
 }
 
+bool panelHover = false;
 void updatePanel(Panel* panel){
+	if(panelHover || !(between(mousePos.x - panel->frame.x, 0, panel->frame.w) && between(mousePos.y - panel->frame.y, 0, panel->frame.h)))
+		return;
+	panelHover = true;
 	for(int i=0; i<panel->buttonCount; i++){
 		updateButton(&panel->buttonList[i], &(SDL_Point){panel->frame.x, panel->frame.y});
 	}

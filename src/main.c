@@ -119,6 +119,7 @@ SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event){
 	return SDL_APP_CONTINUE;
 }
 
+extern bool panelHover;
 SDL_AppResult SDL_AppIterate(void *appstate){
 	(void)appstate;
 	SDL_GetWindowSize(window, &windowSize.x, &windowSize.y);
@@ -141,6 +142,7 @@ SDL_AppResult SDL_AppIterate(void *appstate){
 	SDL_SetRenderDrawColor(renderer, 96, 96, 96, SDL_ALPHA_OPAQUE);
 	SDL_RenderClear(renderer);
 
+	panelHover = false;
 	updatePanel(&toolPanel); updatePanel(&colourPanel);
 
 	//mousePos.x = zoom * (cameraPos.x - testImage.width/2 + x) + windowSize.x/2
@@ -154,6 +156,8 @@ SDL_AppResult SDL_AppIterate(void *appstate){
 	drawColour = priColour;
 	if(mouseButtons[2].down) drawColour = secColour;
 
+	if(panelHover)
+		goto toolUpdateSkip;
 	switch(toolMode){
 		case TOOL_BRUSH:
 			if(!mouseButtons[0].down && !mouseButtons[2].down) break;
@@ -184,6 +188,7 @@ SDL_AppResult SDL_AppIterate(void *appstate){
 			if(mouseButtons[2].down) secColour = hoverColour;
 			break;
 	}
+toolUpdateSkip:
 
 	if(updateImage)
 		SDL_UpdateTexture(currImage->texture, NULL, currImage->pixels, currImage->width * sizeof(Uint32));
@@ -198,6 +203,26 @@ SDL_AppResult SDL_AppIterate(void *appstate){
 		&(SDL_FRect){0, 0, currImage->width, currImage->height}, 
 		&imageDest
 	);
+
+	switch(toolMode){
+		case TOOL_BRUSH:
+			SDL_RenderRect(renderer, &(SDL_FRect){
+				canvasLoc.x + floor(adjMousePos.x - brushSize * 0.5) * zoom, 
+				canvasLoc.y + floor(adjMousePos.y - brushSize * 0.5) * zoom, 
+				brushSize * zoom, brushSize * zoom
+			}); 
+			break;
+		case TOOL_ERASE:
+			SDL_RenderRect(renderer, &(SDL_FRect){
+				canvasLoc.x + floor(adjMousePos.x - eraserSize * 0.5) * zoom, 
+				canvasLoc.y + floor(adjMousePos.y - eraserSize * 0.5) * zoom, 
+				eraserSize * zoom, eraserSize * zoom
+			}); 
+			break;
+		case TOOL_COLOURPICK:
+			
+			break;
+	}
 
 	drawPanel(&toolPanel); drawPanel(&colourPanel);
 

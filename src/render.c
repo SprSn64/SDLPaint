@@ -45,9 +45,10 @@ void setPixel(Image* image, Uint32 posX, Uint32 posY, SDL_FColor colour, bool ov
 	image->pixels[posX + posY * image->width] = colourToInt(newColour);
 }
 
-void drawRect(Image* image, Uint16 posX, Uint16 posY, Uint16 width, Uint16 height, SDL_FColor colour, bool override){
+void drawRect(Image* image, Sint16 posX, Sint16 posY, Uint16 width, Uint16 height, SDL_FColor colour, bool override){
 	if(!image) return;
 	for(Uint32 i=0; i<(Uint32)width * height; i++){
+		if((Sint16)(posX + i % width) < 0 || (Sint16)(posY + (i / width)) < 0) continue;
 		setPixel(image, posX + i % width, posY + (i / width), colour, override);
 	}
 }

@@ -30,7 +30,7 @@ Image* currImage = NULL;
 Layer* currLayer = NULL;
 bool updateImage = true;
 
-SDL_Texture* checkerTex = false;
+SDL_Texture* checkerTex;
 
 bool between(float input, float min, float max){return(input >= min && input <= max);}
 
@@ -78,6 +78,7 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]){
 
 	mouseButtons[0].code = SDL_BUTTON_LMASK; mouseButtons[1].code = SDL_BUTTON_MMASK; mouseButtons[2].code = SDL_BUTTON_RMASK;
 	keyList[0].code = SDL_SCANCODE_LCTRL; keyList[1].code = SDL_SCANCODE_S; keyList[2].code = SDL_SCANCODE_O;
+	keyList[3].code = SDL_SCANCODE_MINUS; keyList[4].code = SDL_SCANCODE_EQUALS;
 
 	if(!currImage)
 		currImage = newImageItem(640, 480, 0xFFFFFFFF);
@@ -204,6 +205,7 @@ toolUpdateSkip:
 		&imageDest
 	);
 
+	SDL_SetRenderDrawColor(renderer, 0, 0, 0, 128);
 	switch(toolMode){
 		case TOOL_BRUSH:
 			SDL_RenderRect(renderer, &(SDL_FRect){
@@ -220,7 +222,27 @@ toolUpdateSkip:
 			}); 
 			break;
 		case TOOL_COLOURPICK:
+			SDL_RenderRect(renderer, &(SDL_FRect){
+				canvasLoc.x + floor(adjMousePos.x - 0.5) * zoom, 
+				canvasLoc.y + floor(adjMousePos.y - 0.5) * zoom, 
+				zoom, zoom
+			}); 
+
+			if(!between(adjMousePos.x, 0, currImage->width) || !between(adjMousePos.y, 0, currImage->height)) break;
 			
+			SDL_FColor hoverColour = intToColour(currImage->pixels[(adjMousePos.x % currImage->width) + (adjMousePos.y % currImage->height) * currImage->width]);
+			SDL_SetRenderDrawColor(renderer, hoverColour.r * 255, hoverColour.g * 255, hoverColour.b * 255, 255);
+			SDL_RenderFillRect(renderer, &(SDL_FRect){
+				canvasLoc.x + floor(adjMousePos.x) * zoom + 8, 
+				canvasLoc.y + floor(adjMousePos.y) * zoom - 24, 
+				16, 16
+			}); 
+			SDL_SetRenderDrawColor(renderer, 0, 0, 0, 128);
+			SDL_RenderRect(renderer, &(SDL_FRect){
+				canvasLoc.x + floor(adjMousePos.x) * zoom + 8, 
+				canvasLoc.y + floor(adjMousePos.y) * zoom - 24, 
+				16, 16
+			}); 
 			break;
 	}
 

@@ -51,6 +51,7 @@ const char* basePath;
 
 extern Panel toolPanel;
 extern Panel colourPanel;
+extern Panel layerPanel;
 
 SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]){
 	(void)appstate; (void)argc; (void)argv;
@@ -106,8 +107,8 @@ SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event){
 			zoom = min(max(zoom + zoomChange, zoomMin), zoomMax);
 
 			cameraPos = (SDL_FPoint){
-				cameraPos.x + (1 - 2 * (zoomChange < 0)) * (cameraPos.x - (mousePos.x - windowSize.x/2)) / 10, 
-				cameraPos.y + (1 - 2 * (zoomChange < 0)) * (cameraPos.y - (mousePos.y - windowSize.y/2)) / 10
+				cameraPos.x + (1 - 2 * (zoomChange < 0)) * (cameraPos.x - (mousePos.x - windowSize.x/2)) / (zoom * 10), 
+				cameraPos.y + (1 - 2 * (zoomChange < 0)) * (cameraPos.y - (mousePos.y - windowSize.y/2)) / (zoom * 10)
 			};
 
 			if(zoom < 1)
@@ -146,6 +147,10 @@ SDL_AppResult SDL_AppIterate(void *appstate){
 	panelHover = false;
 	updatePanel(&toolPanel); updatePanel(&colourPanel);
 
+	if(panelHover)
+		SDL_ShowCursor();
+	else
+		SDL_HideCursor();
 	//mousePos.x = zoom * (cameraPos.x - testImage.width/2 + x) + windowSize.x/2
 	SDL_Point canvasLoc = {zoom * (cameraPos.x - currImage->width/2) + windowSize.x/2, zoom * (cameraPos.y - currImage->height/2) + windowSize.y/2};
 
@@ -157,23 +162,30 @@ SDL_AppResult SDL_AppIterate(void *appstate){
 	drawColour = priColour;
 	if(mouseButtons[2].down) drawColour = secColour;
 
-	if(panelHover)
+	switch(toolMode){
+		case TOOL_BRUSH:
+			brushSize = min(max(brushSize + keyList[4].pressed - keyList[3].pressed, 1), 256);
+			break;
+		case TOOL_ERASE:
+			eraserSize = min(max(eraserSize + keyList[4].pressed - keyList[3].pressed, 1), 256);
+			break;
+	}
+
+	if(panelHover || (!mouseButtons[0].down && !mouseButtons[2].down))
 		goto toolUpdateSkip;
 	switch(toolMode){
 		case TOOL_BRUSH:
-			if(!mouseButtons[0].down && !mouseButtons[2].down) break;
-
 			if(mouseButtons[0].pressed || mouseButtons[2].pressed)
 				//setPixel(currImage, adjMousePos.x, adjMousePos.y, drawColour, false);
-				drawRect(currImage, adjMousePos.x - brushSize/2, adjMousePos.y - brushSize/2, brushSize, brushSize, drawColour, false);
+				//drawRect(currImage, adjMousePos.x - brushSize/2, adjMousePos.y - brushSize/2, brushSize, brushSize, drawColour, false);
+				setLayerPixel(currLayer, adjMousePos.x, adjMousePos.y, drawColour, false);
 			else
 				//drawHamLine(currImage, lastMousePos, adjMousePos, drawColour, false);
-				drawBar(currImage, lastMousePos, adjMousePos, brushSize, drawColour, false);
+				//drawBar(currImage, lastMousePos, adjMousePos, brushSize, drawColour, false);
+				layerdrawBar(currLayer, lastMousePos, adjMousePos, brushSize, drawColour, false);
 			lastMousePos = adjMousePos; updateImage = true; 
 			break;
 		case TOOL_ERASE:
-			if(!mouseButtons[0].down && !mouseButtons[2].down) break;
-
 			if(mouseButtons[0].pressed || mouseButtons[2].pressed)
 				//setPixel(currImage, adjMousePos.x, adjMousePos.y, (SDL_FColor){0, 0, 0, 0}, true);
 				drawRect(currImage, adjMousePos.x - eraserSize/2, adjMousePos.y - eraserSize/2, eraserSize, eraserSize, (SDL_FColor){0, 0, 0, 0}, true);
@@ -191,8 +203,12 @@ SDL_AppResult SDL_AppIterate(void *appstate){
 	}
 toolUpdateSkip:
 
-	if(updateImage)
-		SDL_UpdateTexture(currImage->texture, NULL, currImage->pixels, currImage->width * sizeof(Uint32));
+	if(updateImage){
+		SDL_UpdateTexture(currLayer->texture, NULL, currLayer->pixels, currImage->width * sizeof(Uint32));
+
+		refreshImage(currImage);
+		//SDL_UpdateTexture(currImage->texture, NULL, currImage->pixels, currImage->width * sizeof(Uint32));
+	}
 	updateImage = false;
 
 	SDL_FRect imageDest = {canvasLoc.x, canvasLoc.y, currImage->width * zoom, currImage->height * zoom};
@@ -205,6 +221,8 @@ toolUpdateSkip:
 		&imageDest
 	);
 
+	if(panelHover)
+		goto toolDrawSkip;
 	SDL_SetRenderDrawColor(renderer, 0, 0, 0, 128);
 	switch(toolMode){
 		case TOOL_BRUSH:
@@ -229,7 +247,7 @@ toolUpdateSkip:
 			}); 
 
 			if(!between(adjMousePos.x, 0, currImage->width) || !between(adjMousePos.y, 0, currImage->height)) break;
-			
+
 			SDL_FColor hoverColour = intToColour(currImage->pixels[(adjMousePos.x % currImage->width) + (adjMousePos.y % currImage->height) * currImage->width]);
 			SDL_SetRenderDrawColor(renderer, hoverColour.r * 255, hoverColour.g * 255, hoverColour.b * 255, 255);
 			SDL_RenderFillRect(renderer, &(SDL_FRect){
@@ -245,8 +263,14 @@ toolUpdateSkip:
 			}); 
 			break;
 	}
+toolDrawSkip:
 
-	drawPanel(&toolPanel); drawPanel(&colourPanel);
+	drawPanel(&toolPanel); drawPanel(&colourPanel); drawPanel(&layerPanel);
+
+	char zoomText[64];
+	sprintf(zoomText, "Zoom: %d%%", (int)(zoom * 100));
+	SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+	SDL_RenderDebugText(renderer, 2, windowSize.y - 10, zoomText);
 
 	SDL_RenderPresent(renderer);
 

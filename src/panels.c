@@ -17,10 +17,15 @@ extern SDL_Renderer *renderer;
 extern SDL_FPoint mousePos;
 extern ButtonMap mouseButtons[3];
 
+extern Image* currImage;
+extern Layer* currLayer;
+
 Panel toolPanel = {(SDL_FRect){4, 4, 38, 256}, NULL, 3, PANEL_VISIBLE};
 Panel colourPanel = {(SDL_FRect){48, 4, 320, 256}, NULL, 0, PANEL_VISIBLE};
+Panel layerPanel = {(SDL_FRect){4, 264, 72, 256}, NULL, 0, PANEL_VISIBLE};
 
 Uint32 toolList[3] = {TOOL_BRUSH, TOOL_ERASE, TOOL_COLOURPICK};
+char* toolStrings[3] = {"Brush", "Eraser", "Colour Picker"};
 
 extern Uint32 toolMode;
 void buttonSetTool(Button* item){
@@ -104,11 +109,50 @@ void updatePanel(Panel* panel){
 
 extern SDL_FColor priColour;
 extern SDL_FColor secColour;
+
+extern SDL_Texture* checkerTex;
 void drawColourPanel(Panel* panel){
+	SDL_RenderTexture(renderer, checkerTex, &(SDL_FRect){0, 0, 64, 64}, &(SDL_FRect){panel->frame.x + 18, panel->frame.y + 18, 32, 32});
 	SDL_SetRenderDrawColor(renderer, secColour.r * 255, secColour.g * 255, secColour.b * 255, secColour.a * 255);
 	SDL_RenderFillRect(renderer, &(SDL_FRect){panel->frame.x + 18, panel->frame.y + 18, 32, 32});
+
+	SDL_RenderTexture(renderer, checkerTex, &(SDL_FRect){0, 0, 64, 64}, &(SDL_FRect){panel->frame.x + 2, panel->frame.y + 2, 32, 32});
 	SDL_SetRenderDrawColor(renderer, priColour.r * 255, priColour.g * 255, priColour.b * 255, priColour.a * 255);
 	SDL_RenderFillRect(renderer, &(SDL_FRect){panel->frame.x + 2, panel->frame.y + 2, 32, 32});
+
+	char toolText[64];
+	sprintf(toolText, "Current Tool: %s", toolStrings[toolMode]);
+
+	SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+	SDL_RenderDebugText(renderer, panel->frame.x + 2, panel->frame.y + panel->frame.h - 10, toolText);
+}
+
+void drawLayerPanel(Panel* panel){
+	//SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+	//SDL_RenderDebugText(renderer, panel->frame.x + 2, panel->frame.y + 2, "fuck.");
+
+	if(!currImage) return;
+
+	float imgAspect = (float)currImage->width / currImage->height;
+	SDL_FPoint imgScale = {
+		imgAspect <= 1 ? imgAspect : 1,
+		imgAspect >= 1 ? 1 / imgAspect: 1
+	};
+
+	Layer* layerItem = currImage->headLayer;
+	Uint32 layerCount = 0;
+	while(layerItem){
+		SDL_FRect layerRect = {panel->frame.x + 4, panel->frame.y + layerCount * 66 + 4, 64 * imgScale.x, 64 * imgScale.y};
+		SDL_RenderTextureTiled(renderer, checkerTex, NULL, 1, &layerRect);
+		SDL_RenderTexture(renderer, layerItem->texture, &(SDL_FRect){0, 0, currImage->width, currImage->height}, &layerRect);
+
+		layerCount++;
+		layerItem = layerItem->next;
+	}
+
+	//SDL_FRect layerRect = {panel->frame.x + 4, panel->frame.y + 4, 64 * imgScale.x, 64 * imgScale.y};
+	//SDL_RenderTextureTiled(renderer, checkerTex, NULL, 1, &layerRect);
+	//SDL_RenderTexture(renderer, currImage->texture, &(SDL_FRect){0, 0, currImage->width, currImage->height}, &layerRect);
 }
 
 void drawPanel(Panel* panel){
@@ -123,4 +167,6 @@ void drawPanel(Panel* panel){
 
 	if(panel == &colourPanel)
 		drawColourPanel(panel);
+	if(panel == &layerPanel)
+		drawLayerPanel(panel);
 }

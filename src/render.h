@@ -19,4 +19,8 @@ int drawHamLine(Image* image, SDL_Point pointA, SDL_Point pointB, SDL_FColor col
 void drawRect(Image* image, Sint16 posX, Sint16 posY, Uint16 width, Uint16 height, SDL_FColor colour, bool override);
 void drawBar(Image* image, SDL_Point pointA, SDL_Point pointB, float thickness, SDL_FColor colour, bool override);
 
+void setLayerPixel(Layer* layer, Uint32 posX, Uint32 posY, SDL_FColor colour, bool override);
+void layerDrawRect(Layer* layer, SDL_Point pointA, SDL_Point pointB, float thickness, SDL_FColor colour, bool override);
+void layerdrawBar(Layer* layer, SDL_Point pointA, SDL_Point pointB, float thickness, SDL_FColor colour, bool override);
+
 #endif

@@ -45,11 +45,36 @@ void setPixel(Image* image, Uint32 posX, Uint32 posY, SDL_FColor colour, bool ov
 	image->pixels[posX + posY * image->width] = colourToInt(newColour);
 }
 
+void setLayerPixel(Layer* layer, Uint32 posX, Uint32 posY, SDL_FColor colour, bool override){
+	if(!layer || (colour.a == 0 && !override)) return;
+
+	Image* image = layer->image;
+	if(!image || !between(posX, 0, image->width - 1) || !between(posY, 0, image->height - 1)) return;
+	SDL_FColor newColour = colour;
+	if(colour.a != 1 && !override){
+		SDL_FColor colourGot = intToColour(image->pixels[posX + posY * image->width]);
+		newColour = colourLerp(colourGot, colour, colour.a);
+		newColour.a = min(colourGot.a + colour.a, 1);
+	}
+	layer->pixels[posX + posY * image->width] = colourToInt(newColour);
+}
+
 void drawRect(Image* image, Sint16 posX, Sint16 posY, Uint16 width, Uint16 height, SDL_FColor colour, bool override){
 	if(!image) return;
 	for(Uint32 i=0; i<(Uint32)width * height; i++){
 		if((Sint16)(posX + i % width) < 0 || (Sint16)(posY + (i / width)) < 0) continue;
 		setPixel(image, posX + i % width, posY + (i / width), colour, override);
+	}
+}
+
+void layerDrawRect(Layer* layer, Sint16 posX, Sint16 posY, Uint16 width, Uint16 height, SDL_FColor colour, bool override){
+	if(!layer) return; 
+
+	Image* image = layer->image;
+	if(!image) return;
+	for(Uint32 i=0; i<(Uint32)width * height; i++){
+		if((Sint16)(posX + i % width) < 0 || (Sint16)(posY + (i / width)) < 0) continue;
+		setLayerPixel(layer, posX + i % width, posY + (i / width), colour, override);
 	}
 }
 
@@ -65,6 +90,23 @@ void drawBar(Image* image, SDL_Point pointA, SDL_Point pointB, float thickness, 
 		drawRect(image, lerp(pointA.x, pointB.x, step * i) - halfThick, lerp(pointA.y, pointB.y, step * i) - halfThick, thickness, thickness, colour, override);
 	}
 }
+
+void layerdrawBar(Layer* layer, SDL_Point pointA, SDL_Point pointB, float thickness, SDL_FColor colour, bool override){
+	if(!layer) return; 
+
+	Image* image = layer->image;
+	if(!image) return;
+
+	bool vert = abs(pointB.x - pointA.x) < abs(pointB.y - pointA.y);
+	Uint32 barLength = vert ? abs(pointA.y - pointB.y) : abs(pointB.x - pointA.x);
+	float halfThick = thickness/2;
+
+	float step = 1.f/barLength;
+	for(Uint32 i=0; i<barLength; i++){
+		layerDrawRect(layer, lerp(pointA.x, pointB.x, step * i) - halfThick, lerp(pointA.y, pointB.y, step * i) - halfThick, thickness, thickness, colour, override);
+	}
+}
+
 
 int drawHamLine(Image* image, SDL_Point pointA, SDL_Point pointB, SDL_FColor colour, bool override){
 	if(abs(pointB.x - pointA.x) > abs(pointB.y - pointA.y)){

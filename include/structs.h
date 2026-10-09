@@ -22,6 +22,7 @@ typedef struct Image Image;
 
 typedef struct Layer{
 	Uint32 *pixels;
+	SDL_Texture* texture;
 	Uint32 blend;
 	float alpha;
 
@@ -38,5 +39,16 @@ typedef struct Image{
 
 	Layer* headLayer;
 } Image;
+
+typedef struct DrawLine{
+	SDL_FColor colour;
+	float size;
+} DrawLine;
+
+typedef struct DrawPoint{
+	SDL_FPoint pos;
+	SDL_FPoint vel;
+	float pressure;
+} DrawPoint;
 
 #endif
